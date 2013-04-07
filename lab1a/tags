@@ -1,0 +1,19 @@
+Mmain	main.c	/^main (int argc, char **argv)$/
+c	read-command.c	17
+check_nonnull	alloc.c	/^check_nonnull (void *p)$/
+checked_grow_alloc	alloc.c	/^checked_grow_alloc (void *ptr, size_t *size)$/
+checked_malloc	alloc.c	/^checked_malloc (size_t size)$/
+checked_realloc	alloc.c	/^checked_realloc (void *ptr, size_t size)$/
+command_indented_print	print-command.c	/^command_indented_print (int indent, command_t c)$/
+command_status	execute-command.c	/^command_status (command_t c)$/
+command_stream	read-command.c	15
+execute_command	execute-command.c	/^execute_command (command_t c, bool time_travel)$/
+get_next_byte	main.c	/^get_next_byte (void *stream)$/
+make_command_stream	read-command.c	/^make_command_stream (int (*get_next_byte) (void *)/
+memory_exhausted	alloc.c	/^memory_exhausted (int errnum)$/
+next	read-command.c	18
+print_command	print-command.c	/^print_command (command_t c)$/
+program_name	main.c	10
+read_command_stream	read-command.c	/^read_command_stream (command_stream_t s)$/
+script_name	main.c	11
+usage	main.c	/^usage (void)$/
