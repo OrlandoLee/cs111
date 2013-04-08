@@ -8,59 +8,15 @@
 #include <error.h>
 #include <string.h>
 #include <stdio.h>
-//#include <stdlib.h>
+#include <stdlib.h>
 
-////////////////////////////
-#define QUEUESIZE       1000
-
-struct command_stream{
-          command_t q[QUEUESIZE+1];// body of queue 
-          int first ;                       //position of first element
-          int last ;                       // position of last element 
-          int count ;                      // number of queue elements 
-};
-void init_queue(command_stream_t q)
-{
-          q->first = 0;
-          q->last = QUEUESIZE-1;
-          q->count = 0;
-}
-void enqueue(command_stream_t q, command_t x)
-{
-          if (q->count >= QUEUESIZE)
-            printf("Warning: queue overflow enqueue \n");
-          else {
-            q->last = (q->last+1) % QUEUESIZE;
-            q->q[ q->last ] = x;    
-            q->count = q->count + 1;
-          }
-}
-
-command_t dequeue(command_stream_t q)
-{
-          command_t x;
-        if (q->count <= 0) printf("Warning: empty queue dequeue.\n");
-        else {
-          x = q->q[ q->first ];
-          q->first = (q->first+1) % QUEUESIZE;
-          q->count = q->count - 1;
-        }
-        return(x);
-}
-
-int empty(command_stream_t q)
-{
-          if (q->count <= 0) return (1);
-          else return (0);
-}
-////////////////////////////
 int line_count;
 int (*get_byte) (void *);
 void *get_byte_argument;
 command_t make_command(char* buffer, enum command_type type);
 command_t make_subshell_command(char* buffer);
 
-/*typedef struct command_node *command_node_t;
+typedef struct command_node *command_node_t;
 
 struct command_node
 {
@@ -73,7 +29,7 @@ struct command_stream
 {
   command_node_t* commands;
 };
-*/
+
 void
 syntax_error()
 {
@@ -373,10 +329,13 @@ make_command(char* buffer, enum command_type type)
     return make_compound_command(buffer, type, NULL);
 }
 
-command_t
+command_node_t
 make_node(char* buffer, enum command_type type)
 {
- return make_command(buffer,type);
+  command_node_t node = checked_malloc(sizeof(struct  command_node));
+  node->next = NULL;
+  node->command = make_command(buffer,type);
+  return node;
 }
 
 command_stream_t
@@ -388,18 +347,17 @@ make_command_stream (int (*get_next_byte) (void *),
   get_byte = get_next_byte;
   get_byte_argument = get_next_byte_argument;
   command_stream_t stream = checked_malloc(sizeof(struct command_stream));
-command_t temp_node = checked_malloc(sizeof(struct command)); 
-
-init_queue(stream);
-
-
+  command_node_t node = checked_malloc(sizeof(struct command_node));
+  command_node_t temp_node = node;
+  command_node_t head = NULL;    
+  command_node_t tail = NULL;
   if(!feof(get_byte_argument))
   {
     eat_whitespace();
     if((buffer[0] = get_byte(get_byte_argument)) == EOF)
     {
       free(stream);
-      free(temp_node);
+      free(node);
       return NULL;
     }
     ungetc(buffer[0], get_byte_argument);
@@ -408,20 +366,26 @@ init_queue(stream);
 
     while(1)  
     {
-	     
-	// if(type == SEQUENCE_COMMAND)
-        //temp_node = make_node(buffer, SIMPLE_COMMAND);
-      //else
+      if(type == SEQUENCE_COMMAND)
+        temp_node = make_node(buffer, SIMPLE_COMMAND);
+      else
         temp_node = make_node(buffer, type);	
-	
-	enqueue(stream,temp_node);
-
+      if(!head)
+      {
+      	head = temp_node;
+      }
+      else
+      {
+	      tail->next = temp_node;
+        temp_node->prev = tail;
+      }
+      tail = temp_node;
       if(type == SEQUENCE_COMMAND)
         break;
       eat_whitespace();
       if((buffer[0] = get_byte(get_byte_argument)) == EOF)
       {
-       // stream->commands = &head;
+        stream->commands = &head;
         return stream;
       }
       ungetc(buffer[0], get_byte_argument);
@@ -429,18 +393,25 @@ init_queue(stream);
       type = scan(buffer);
     }
   }
-//  stream->commands = &head;
+  stream->commands = &head;
   return stream;
 }
 
 command_t
 read_command_stream (command_stream_t s)
 {
-   if(!empty(s))  {
-   return dequeue(s);
- }
-  else
-  {
+  if(s == NULL)
     return NULL;
+  if(*(s->commands) != NULL)
+  {
+    command_node_t stream = *(s->commands);
+    *(s->commands) = stream->next;
+    if(stream->prev != NULL)
+    {
+      free(stream->prev->command);
+      free(stream->prev);
+    }
+    return stream->command;
   }
+  return NULL;
 }

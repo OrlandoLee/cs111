@@ -1,2 +1,4 @@
 ddd
-&&s
+#this is comment
+#!
+a&&s
