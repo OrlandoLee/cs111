@@ -8,8 +8,8 @@
 #include <error.h>
 #include <string.h>
 #include <stdio.h>
-//#include <stdlib.h>
-
+#include <ctype.h>
+#include <stdlib.h>
 ////////////////////////////
 #define QUEUESIZE       1000
 
@@ -81,12 +81,12 @@ syntax_error()
 }
 
 void 
-eat_whitespace()
+eleminateEmptySpace()
 {
   if(!feof(get_byte_argument))
   {
     char c = get_byte(get_byte_argument);
-    while(strchr("\n\t ", c))
+    while(strchr("\t\n ", c))
     {
       if(c == '\n')
         line_count++;
@@ -103,7 +103,7 @@ scan(char *buffer)
   { 
     char c = get_byte(get_byte_argument);
     char d = get_byte(get_byte_argument);
-    if(d == '#' && !strchr("\n\t ", c))
+    if(d == '#' && !strchr("\t\n ", c))
       syntax_error();
     ungetc(d, get_byte_argument);
     switch(c)
@@ -121,7 +121,7 @@ scan(char *buffer)
         d = get_byte(get_byte_argument);
         if(d == '&')
         {
-          eat_whitespace();
+          eleminateEmptySpace();
           return AND_COMMAND;
         }
         else if(d == EOF)
@@ -131,7 +131,7 @@ scan(char *buffer)
         break;
       case '(':
       {
-        eat_whitespace();
+        eleminateEmptySpace();
         return SUBSHELL_COMMAND;
       }
       case ')':
@@ -143,13 +143,13 @@ scan(char *buffer)
         d = get_byte(get_byte_argument);
         if(d == '|')
         {
-          eat_whitespace();
+          eleminateEmptySpace();
           return OR_COMMAND;
         }
-        else if(isalnum(d) || strchr("!%+,-./:@^_\t\n ", d))
+        else if(isalnum(d) || strchr("!%+,-./:@^_\n\t ", d))
         {
           ungetc(d, get_byte_argument);
-          eat_whitespace();
+          eleminateEmptySpace();
           return PIPE_COMMAND;
         }
         else if(d == EOF)
@@ -319,7 +319,7 @@ make_subshell_command(char *buffer)
   subshell->type = SUBSHELL_COMMAND; subshell->status = -1;
   enum command_type type = scan(buffer);
   command_t command = make_command(buffer, type);
-  eat_whitespace();
+  eleminateEmptySpace();
   char c;
   if((c = get_byte(get_byte_argument)) == ')')
   {
@@ -395,7 +395,7 @@ init_queue(stream);
 
   if(!feof(get_byte_argument))
   {
-    eat_whitespace();
+    eleminateEmptySpace();
     if((buffer[0] = get_byte(get_byte_argument)) == EOF)
     {
       free(stream);
@@ -418,7 +418,7 @@ init_queue(stream);
 
       if(type == SEQUENCE_COMMAND)
         break;
-      eat_whitespace();
+      eleminateEmptySpace();
       if((buffer[0] = get_byte(get_byte_argument)) == EOF)
       {
        // stream->commands = &head;
