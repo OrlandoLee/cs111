@@ -60,20 +60,7 @@ void *get_byte_argument;
 command_t make_command(char* buffer, enum command_type type);
 command_t make_subshell_command(char* buffer);
 
-/*typedef struct command_node *command_node_t;
 
-struct command_node
-{
-  command_t command;
-  command_node_t next;
-  command_node_t prev;
-};
-
-struct command_stream
-{
-  command_node_t* commands;
-};
-*/
 void
 syntax_error()
 {
@@ -103,8 +90,8 @@ scan(char *buffer)
   { 
     char c = get_byte(get_byte_argument);
     char d = get_byte(get_byte_argument);
-    if(d == '#' && !strchr("\t\n ", c))
-      syntax_error();
+  //  if(d == '#' && !strchr("\t\n ", c))
+  //    syntax_error();
     ungetc(d, get_byte_argument);
     switch(c)
     {
