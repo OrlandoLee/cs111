@@ -1,19 +1,67 @@
 Mmain	main.c	/^main (int argc, char **argv)$/
-c	read-command.c	17
+QUEUESIZE	read-command.c	14
+QUEUESIZE	read-command_myversion.c	16
 check_nonnull	alloc.c	/^check_nonnull (void *p)$/
 checked_grow_alloc	alloc.c	/^checked_grow_alloc (void *ptr, size_t *size)$/
 checked_malloc	alloc.c	/^checked_malloc (size_t size)$/
 checked_realloc	alloc.c	/^checked_realloc (void *ptr, size_t size)$/
+command	read-command-correct.c	23
 command_indented_print	print-command.c	/^command_indented_print (int indent, command_t c)$/
+command_node	read-command-correct.c	21
+command_node_t	read-command-correct.c	19
 command_status	execute-command.c	/^command_status (command_t c)$/
-command_stream	read-command.c	15
+command_stream	read-command.c	16
+command_stream	read-command-correct.c	28
+command_stream	read-command_myversion.c	18
+commands	read-command-correct.c	30
+count	read-command.c	20
+count	read-command_myversion.c	22
+dequeue	read-command.c	/^command_t dequeue(command_stream_t q)$/
+dequeue	read-command_myversion.c	/^command_t dequeue(command_stream_t q)$/
+eat_whitespace	read-command-correct.c	/^eat_whitespace()$/
+eleminateEmptySpace	read-command.c	/^eleminateEmptySpace()$/
+empty	read-command.c	/^int empty(command_stream_t q)$/
+empty	read-command_myversion.c	/^int empty(command_stream_t q)$/
+enqueue	read-command.c	/^void enqueue(command_stream_t q, command_t x)$/
+enqueue	read-command_myversion.c	/^void enqueue(command_stream_t q, command_t x)$/
 execute_command	execute-command.c	/^execute_command (command_t c, bool time_travel)$/
+first	read-command.c	18
+first	read-command_myversion.c	20
+get_byte_argument	read-command.c	61
+get_byte_argument	read-command-correct.c	15
 get_next_byte	main.c	/^get_next_byte (void *stream)$/
+init_queue	read-command.c	/^void init_queue(command_stream_t q)$/
+init_queue	read-command_myversion.c	/^void init_queue(command_stream_t q)$/
+last	read-command.c	19
+last	read-command_myversion.c	21
+line_count	read-command.c	59
+line_count	read-command-correct.c	13
+make_Queuenode	read-command.c	/^make_Queuenode(char* buffer, enum command_type typ/
+make_command	read-command.c	/^make_command(char* buffer, enum command_type type)/
+make_command	read-command-correct.c	/^make_command(char* buffer, enum command_type type)/
 make_command_stream	read-command.c	/^make_command_stream (int (*get_next_byte) (void *)/
+make_command_stream	read-command-correct.c	/^make_command_stream (int (*get_next_byte) (void *)/
+make_command_stream	read-command_myversion.c	/^make_command_stream (int (*get_next_byte) (void *)/
+make_compound_command	read-command.c	/^make_compound_command(char *buffer, enum command_t/
+make_compound_command	read-command-correct.c	/^make_compound_command(char *buffer, enum command_t/
+make_node	read-command-correct.c	/^make_node(char* buffer, enum command_type type)$/
+make_simple_command	read-command.c	/^make_simple_command(char *buffer)$/
+make_simple_command	read-command-correct.c	/^make_simple_command(char *buffer)$/
+make_subshell_command	read-command.c	/^make_subshell_command(char *buffer)$/
+make_subshell_command	read-command-correct.c	/^make_subshell_command(char *buffer)$/
 memory_exhausted	alloc.c	/^memory_exhausted (int errnum)$/
-next	read-command.c	18
+next	read-command-correct.c	24
+prev	read-command-correct.c	25
 print_command	print-command.c	/^print_command (command_t c)$/
 program_name	main.c	10
+q	read-command.c	17
+q	read-command_myversion.c	19
 read_command_stream	read-command.c	/^read_command_stream (command_stream_t s)$/
+read_command_stream	read-command-correct.c	/^read_command_stream (command_stream_t s)$/
+read_command_stream	read-command_myversion.c	/^read_command_stream (command_stream_t s)$/
+scan	read-command.c	/^scan(char *buffer)$/
+scan	read-command-correct.c	/^scan(char *buffer)$/
 script_name	main.c	11
+syntax_error	read-command.c	/^syntax_error()$/
+syntax_error	read-command-correct.c	/^syntax_error()$/
 usage	main.c	/^usage (void)$/
