@@ -250,23 +250,23 @@ make_simple_command(char *buffer)
 }
 
 command_t
-make_complete_command(char *buffer, enum command_type type, command_t parent_Command)
+make_compound_command(char *buffer, enum command_type type, command_t parent_Command)
 {
-  command_t complete_command = checked_malloc(sizeof(struct command));
-  complete_command->type = type; 
-  complete_command->status = -1;
+  command_t compound_command = checked_malloc(sizeof(struct command));
+  compound_command->type = type; 
+  compound_command->status = -1;
   if(parent_Command == NULL)
-    complete_command->u.command[0] = make_simple_command(buffer);
+    compound_command->u.command[0] = make_simple_command(buffer);
   else if(type == PIPE_COMMAND && parent_Command->type != PIPE_COMMAND)
-     complete_command->u.command[0] = parent_Command->u.command[1];
+     compound_command->u.command[0] = parent_Command->u.command[1];
   else if(parent_Command->type == SUBSHELL_COMMAND || (type != PIPE_COMMAND && parent_Command->type == PIPE_COMMAND) || (type == PIPE_COMMAND) == (parent_Command->type == PIPE_COMMAND))
-    complete_command->u.command[0] = parent_Command;
+    compound_command->u.command[0] = parent_Command;
   
   enum command_type adjacent_type = scan(buffer);
   if(adjacent_type == SIMPLE_COMMAND || adjacent_type == SEQUENCE_COMMAND)
   {
-    complete_command->u.command[1] = make_simple_command(buffer);
-    return complete_command;
+    compound_command->u.command[1] = make_simple_command(buffer);
+    return compound_command;
   }
   else if(adjacent_type == SUBSHELL_COMMAND)
   {
@@ -274,32 +274,32 @@ make_complete_command(char *buffer, enum command_type type, command_t parent_Com
     adjacent_type = scan(buffer);
     if(adjacent_type == SIMPLE_COMMAND)
     {
-      complete_command->u.command[1] = subshell;
-      return complete_command;
+      compound_command->u.command[1] = subshell;
+      return compound_command;
     }
     else if(type != PIPE_COMMAND && adjacent_type == PIPE_COMMAND)
     {
-      complete_command->u.command[1] = subshell;
-      complete_command->u.command[1] = make_complete_command(buffer, adjacent_type, complete_command);
-      return complete_command;
+      compound_command->u.command[1] = subshell;
+      compound_command->u.command[1] = make_compound_command(buffer, adjacent_type, compound_command);
+      return compound_command;
     }
     else
     {
-      complete_command->u.command[1] = subshell;
-      command_t adjacent_command = make_complete_command(buffer, adjacent_type, complete_command);
+      compound_command->u.command[1] = subshell;
+      command_t adjacent_command = make_compound_command(buffer, adjacent_type, compound_command);
       return adjacent_command;
     }
   }
   else if(type != PIPE_COMMAND && adjacent_type == PIPE_COMMAND)
   {
-    complete_command->u.command[1] = make_simple_command(buffer);
-    complete_command->u.command[1] = make_complete_command(buffer, adjacent_type, complete_command);
-    return complete_command;
+    compound_command->u.command[1] = make_simple_command(buffer);
+    compound_command->u.command[1] = make_compound_command(buffer, adjacent_type, compound_command);
+    return compound_command;
   }
   else
   {
-    complete_command->u.command[1] = make_simple_command(buffer);
-    command_t adjacent_command = make_complete_command(buffer, adjacent_type, complete_command);
+    compound_command->u.command[1] = make_simple_command(buffer);
+    command_t adjacent_command = make_compound_command(buffer, adjacent_type, compound_command);
     return adjacent_command;
   }
 }
@@ -359,10 +359,10 @@ make_command(char* buffer, enum command_type type)
     if(type == SIMPLE_COMMAND)
       return subshell;
     else
-      return make_complete_command(buffer, type, subshell);
+      return make_compound_command(buffer, type, subshell);
   }
   else
-    return make_complete_command(buffer, type, NULL);
+    return make_compound_command(buffer, type, NULL);
 }
 
 command_t
@@ -400,13 +400,20 @@ init_queue(stream);
 
     while(1)  
     {
-      temp_node = make_Queuenode(buffer, type);	
-	    enqueue(stream,temp_node);
+	     
+	// if(type == SEQUENCE_COMMAND)
+        //temp_node = make_Queuenode(buffer, SIMPLE_COMMAND);
+      //else
+        temp_node = make_Queuenode(buffer, type);	
+	
+	enqueue(stream,temp_node);
+
       if(type == SEQUENCE_COMMAND)
         break;
       eleminateEmptySpace();
       if((buffer[0] = get_byte(get_byte_argument)) == EOF)
       {
+       // stream->commands = &head;
         return stream;
       }
       ungetc(buffer[0], get_byte_argument);
@@ -414,6 +421,7 @@ init_queue(stream);
       type = scan(buffer);
     }
   }
+//  stream->commands = &head;
   return stream;
 }
 
