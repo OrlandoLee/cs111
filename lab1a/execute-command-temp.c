@@ -114,46 +114,43 @@ if(pipe(fd)== -1 )
 pid_t bp = fork();
 if(bp>0)
 {//in sh
-pid_t ap=fork();
-if(ap >0 )
+//pid_t ap=fork();
+
+  dup2(0,fd[0]);
+  dup2(1,fd[1]);
+  int status;
+  waitpid(bp,&status,0);
+  close(fd[0]);
+  close(fd[1]);
+  c->status = WEXITSTATUS(status);
+}
+else if(bp == 0)
+{
+  pid_t ap = fork();
+
+  dup2(fd[0],0);//the output of pipe as the std input
+  //pid_t ap = fork();
+  close(fd[1]);
+  execute_generic(c->u.command[1]);
+  close(fd[0]);//I think it has no use
+  exit(c->u.command[1]->status);
+
+  if(ap >0 )
   {
     close(fd[0]);
     close(fd[1]);
     int status;
-    pid_t wait_pid = waitpid(-1,&status,0);
-    if(wait_pid == bp)
-    {
-      c->status = WEXITSTATUS(status);
-      waitpid(ap,&status,0);
-      return;
-    }
-    else if(wait_pid == ap)
-    {
-      waitpid(bp,&status,0);
-      c->status = WEXITSTATUS(status);
-      return;
-    }
+    waitpid(ap,&status,0);
+    c->status = WEXITSTATUS(status);
   }
   else if(ap == 0)
   {
     dup2(fd[1],1);
     close(fd[0]);
     execute_generic(c->u.command[0]);
+    close(fd[1]);//I think no use
     exit(c->u.command[0]->status);
   }
-  close(fd[0]);
-  close(fd[1]);
-
-  int status;
-  waitpid(bp,&status,0);
-  c->status = WEXITSTATUS(status);
-}
-else if(bp == 0)
-{
-  dup2(fd[0],0);//the output of pipe as the std input
-  close(fd[1]);
-  execute_generic(c->u.command[1]);
-  exit(c->u.command[1]->status);
 
 }
 }

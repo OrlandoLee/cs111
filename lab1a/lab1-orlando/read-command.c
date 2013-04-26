@@ -8,41 +8,71 @@
 #include <error.h>
 #include <string.h>
 #include <stdio.h>
+#include <ctype.h>
 #include <stdlib.h>
+////////////////////////////
+#define QUEUESIZE       1000
 
+struct command_stream{
+          command_t q[QUEUESIZE+1];// body of queue 
+          int first ;                       //position of first element
+          int last ;                       // position of last element 
+          int count ;                      // number of queue elements 
+};
+void init_queue(command_stream_t q)
+{
+          q->first = 0;
+          q->last = QUEUESIZE-1;
+          q->count = 0;
+}
+void enqueue(command_stream_t q, command_t x)
+{
+          if (q->count >= QUEUESIZE)
+            printf("Warning: queue overflow enqueue \n");
+          else {
+            q->last = (q->last+1) % QUEUESIZE;
+            q->q[ q->last ] = x;    
+            q->count = q->count + 1;
+          }
+}
+
+command_t dequeue(command_stream_t q)
+{
+          command_t x;
+        if (q->count <= 0) printf("Warning: empty queue dequeue.\n");
+        else {
+          x = q->q[ q->first ];
+          q->first = (q->first+1) % QUEUESIZE;
+          q->count = q->count - 1;
+        }
+        return(x);
+}
+
+int empty(command_stream_t q)
+{
+          if (q->count <= 0) return (1);
+          else return (0);
+}
+////////////////////////////
+command_t make_command(char* buffer, enum command_type type);
+command_t make_subshell_command(char* buffer);
 int line_count;
 int (*get_byte) (void *);
 void *get_byte_argument;
-command_t make_command(char* buffer, enum command_type type);
-command_t make_subshell_command(char* buffer);
-
-typedef struct command_node *command_node_t;
-
-struct command_node
-{
-  command_t command;
-  command_node_t next;
-  command_node_t prev;
-};
-
-struct command_stream
-{
-  command_node_t* commands;
-};
 
 void
 syntax_error()
 {
-  error(1, 0, "Syntax Error: Line %d", line_count);
+  error(1, 0, "Syntax Error: the Line is %d", line_count);
 }
 
 void 
-eat_whitespace()
+eleminateEmptySpace()
 {
   if(!feof(get_byte_argument))
   {
     char c = get_byte(get_byte_argument);
-    while(strchr("\n\t ", c))
+    while(strchr("\t\n ", c))
     {
       if(c == '\n')
         line_count++;
@@ -58,58 +88,55 @@ scan(char *buffer)
   while(!feof(get_byte_argument))
   { 
     char c = get_byte(get_byte_argument);
-    char d = get_byte(get_byte_argument);
-    if(d == '#' && !strchr("\n\t ", c))
-      syntax_error();
-    ungetc(d, get_byte_argument);
+    char next;
     switch(c)
     {
       case '#':
-        d = get_byte(get_byte_argument);
-      	while(d != '\n')
+        next = get_byte(get_byte_argument);
+      	while(next != '\n')
       	{
-            if(d == EOF)
+            if(next == EOF)
               return SIMPLE_COMMAND;
-        	  d = get_byte(get_byte_argument);
+        	  next = get_byte(get_byte_argument);
       	}
         return scan(buffer);
       case '&':
-        d = get_byte(get_byte_argument);
-        if(d == '&')
+       next = get_byte(get_byte_argument);
+        if(next == '&')
         {
-          eat_whitespace();
+          eleminateEmptySpace();
           return AND_COMMAND;
         }
-        else if(d == EOF)
+        else if(next == EOF)
           syntax_error();
         else 
-          ungetc(d, get_byte_argument);
+          ungetc(next, get_byte_argument);
         break;
-      case '(':
+      case '|':
+       next = get_byte(get_byte_argument);
+        if(next == '|')
+        {
+          eleminateEmptySpace();
+          return OR_COMMAND;
+        }
+        else if( isalnum(next) || strchr("!%+,-./:@^_\n\t ", next))
+        {
+          ungetc(next, get_byte_argument);
+          eleminateEmptySpace();
+          return PIPE_COMMAND;
+        }
+        else if(next == EOF)
+          syntax_error();
+       case '(':
       {
-        eat_whitespace();
+        eleminateEmptySpace();
         return SUBSHELL_COMMAND;
       }
       case ')':
       {
-        ungetc(c, get_byte_argument);
+       ungetc(c, get_byte_argument);
         return SIMPLE_COMMAND;
       }
-      case '|':
-        d = get_byte(get_byte_argument);
-        if(d == '|')
-        {
-          eat_whitespace();
-          return OR_COMMAND;
-        }
-        else if(isalnum(d) || strchr("!%+,-./:@^_\t\n ", d))
-        {
-          ungetc(d, get_byte_argument);
-          eat_whitespace();
-          return PIPE_COMMAND;
-        }
-        else if(d == EOF)
-          syntax_error();
       case '\n': line_count++;
       case ';':
       case EOF:
@@ -125,35 +152,42 @@ make_simple_command(char *buffer)
 {
   if(!strlen(buffer))
     syntax_error();
+  
   command_t command = checked_malloc(sizeof(struct command));
   command->type = SIMPLE_COMMAND; command->status = -1;
   command->input = NULL; command->output = NULL;
   command->u.word = checked_malloc(8*sizeof(char*)); size_t word_size = 8;
-  size_t input_size = 8;size_t output_size = 8;      
-  size_t cur_word_size; size_t index = 0; bool in_word = false;
-  bool in_input = false; bool in_output = false;
-  bool input = false; bool output = false; int i;
+  size_t input_size = 8;
+  size_t output_size = 8;      
+  size_t cur_word_size;
+  size_t index = 0; 
+  bool word_flag = false;
+  bool input_flag = false; 
+  bool output_flag = false;
+  bool input = false; 
+  bool output = false; 
+  int i;
   for(i = 0; buffer[i]; i++)
   {
     if(buffer[i] == '<')
     {
       if(i == 0 || input || output 
-        || in_input || in_output)
+        || input_flag || output_flag)
         syntax_error();
       command->input = checked_malloc(8*sizeof(char));
-      in_input = true;
+      input_flag = true;
     }
     else if(buffer[i] == '>')
     {
-      if(i == 0 || output || in_output)
+      if(i == 0 || output || output_flag)
         syntax_error();
       command->output = checked_malloc(8*sizeof(char)); 
-      in_input = false;
-      in_output = true;
+      input_flag = false;
+      output_flag = true;
     }
     else if(isalnum(buffer[i]) || strchr("!%+,-./:@^_", buffer[i]))
     {
-      if(in_input)
+      if(input_flag)
       {
         input = true;
         char* string = command->input;
@@ -161,7 +195,7 @@ make_simple_command(char *buffer)
           checked_grow_alloc(string, &input_size);
         string[strlen(string)] = buffer[i];
       }
-      else if(in_output)
+      else if(output_flag)
       {
         output = true;
         char* string = command->output;
@@ -169,18 +203,18 @@ make_simple_command(char *buffer)
           checked_grow_alloc(string, &output_size);
         string[strlen(string)] = buffer[i];
       }
-      else if(!in_word)
+      else if(!word_flag)
       {
-        if((input || output) && !in_input && !in_output)
+        if((input || output) && !input_flag && !output_flag)
           syntax_error();
         if(index >= word_size)
           checked_grow_alloc(command->u.word, &word_size);
         command->u.word[index] = checked_malloc(8*sizeof(char));
         cur_word_size = 8;
         command->u.word[index][0] = buffer[i];
-        in_word = true;
+        word_flag = true;
       }
-      else if(in_word)
+      else if(word_flag)
       {
         char *string = command->u.word[index];
         if(strlen(string) >= cur_word_size)
@@ -188,25 +222,25 @@ make_simple_command(char *buffer)
         string[strlen(string)] = buffer[i];
       }
     }
-    else if(strchr("\t ", buffer[i]))
+    else if(strchr(" \t", buffer[i]))
     {
-      if(in_word)
+      if(word_flag)
       {
-        in_word = false;
+        word_flag = false;
         index++;
       }
-      else if(input && in_input)
-        in_input = false;
-      else if(output && in_output)
-        in_output = false; 
+      else if(input && input_flag)
+        input_flag = false;
+      else if(output && output_flag)
+        output_flag = false; 
     }
-    else if(buffer[i] == EOF)
+      else if(buffer[i] == EOF)
     {
       if(index >= word_size)
         checked_grow_alloc(command->u.word, &word_size);
       return command;
     }
-    else
+      else
       syntax_error();
   }
   memset((void *) buffer, '\0', 1024);
@@ -216,21 +250,23 @@ make_simple_command(char *buffer)
 }
 
 command_t
-make_compound_command(char *buffer, enum command_type type, command_t caller)
+make_complete_command(char *buffer, enum command_type type, command_t parent_Command)
 {
-  command_t compound_command = checked_malloc(sizeof(struct command));
-  compound_command->type = type; compound_command->status = -1;
-  if(caller == NULL)
-    compound_command->u.command[0] = make_simple_command(buffer);
-  else if(caller->type == SUBSHELL_COMMAND || (type != PIPE_COMMAND && caller->type == PIPE_COMMAND) || (type == PIPE_COMMAND) == (caller->type == PIPE_COMMAND))
-    compound_command->u.command[0] = caller;
-  else if(type == PIPE_COMMAND && caller->type != PIPE_COMMAND)
-    compound_command->u.command[0] = caller->u.command[1];
+  command_t complete_command = checked_malloc(sizeof(struct command));
+  complete_command->type = type; 
+  complete_command->status = -1;
+  if(parent_Command == NULL)
+    complete_command->u.command[0] = make_simple_command(buffer);
+  else if(type == PIPE_COMMAND && parent_Command->type != PIPE_COMMAND)
+     complete_command->u.command[0] = parent_Command->u.command[1];
+  else if(parent_Command->type == SUBSHELL_COMMAND || (type != PIPE_COMMAND && parent_Command->type == PIPE_COMMAND) || (type == PIPE_COMMAND) == (parent_Command->type == PIPE_COMMAND))
+    complete_command->u.command[0] = parent_Command;
+  
   enum command_type adjacent_type = scan(buffer);
   if(adjacent_type == SIMPLE_COMMAND || adjacent_type == SEQUENCE_COMMAND)
   {
-    compound_command->u.command[1] = make_simple_command(buffer);
-    return compound_command;
+    complete_command->u.command[1] = make_simple_command(buffer);
+    return complete_command;
   }
   else if(adjacent_type == SUBSHELL_COMMAND)
   {
@@ -238,32 +274,32 @@ make_compound_command(char *buffer, enum command_type type, command_t caller)
     adjacent_type = scan(buffer);
     if(adjacent_type == SIMPLE_COMMAND)
     {
-      compound_command->u.command[1] = subshell;
-      return compound_command;
+      complete_command->u.command[1] = subshell;
+      return complete_command;
     }
     else if(type != PIPE_COMMAND && adjacent_type == PIPE_COMMAND)
     {
-      compound_command->u.command[1] = subshell;
-      compound_command->u.command[1] = make_compound_command(buffer, adjacent_type, compound_command);
-      return compound_command;
+      complete_command->u.command[1] = subshell;
+      complete_command->u.command[1] = make_complete_command(buffer, adjacent_type, complete_command);
+      return complete_command;
     }
     else
     {
-      compound_command->u.command[1] = subshell;
-      command_t adjacent_command = make_compound_command(buffer, adjacent_type, compound_command);
+      complete_command->u.command[1] = subshell;
+      command_t adjacent_command = make_complete_command(buffer, adjacent_type, complete_command);
       return adjacent_command;
     }
   }
   else if(type != PIPE_COMMAND && adjacent_type == PIPE_COMMAND)
   {
-    compound_command->u.command[1] = make_simple_command(buffer);
-    compound_command->u.command[1] = make_compound_command(buffer, adjacent_type, compound_command);
-    return compound_command;
+    complete_command->u.command[1] = make_simple_command(buffer);
+    complete_command->u.command[1] = make_complete_command(buffer, adjacent_type, complete_command);
+    return complete_command;
   }
   else
   {
-    compound_command->u.command[1] = make_simple_command(buffer);
-    command_t adjacent_command = make_compound_command(buffer, adjacent_type, compound_command);
+    complete_command->u.command[1] = make_simple_command(buffer);
+    command_t adjacent_command = make_complete_command(buffer, adjacent_type, complete_command);
     return adjacent_command;
   }
 }
@@ -275,7 +311,7 @@ make_subshell_command(char *buffer)
   subshell->type = SUBSHELL_COMMAND; subshell->status = -1;
   enum command_type type = scan(buffer);
   command_t command = make_command(buffer, type);
-  eat_whitespace();
+  eleminateEmptySpace();
   char c;
   if((c = get_byte(get_byte_argument)) == ')')
   {
@@ -323,19 +359,16 @@ make_command(char* buffer, enum command_type type)
     if(type == SIMPLE_COMMAND)
       return subshell;
     else
-      return make_compound_command(buffer, type, subshell);
+      return make_complete_command(buffer, type, subshell);
   }
   else
-    return make_compound_command(buffer, type, NULL);
+    return make_complete_command(buffer, type, NULL);
 }
 
-command_node_t
-make_node(char* buffer, enum command_type type)
+command_t
+make_Queuenode(char* buffer, enum command_type type)
 {
-  command_node_t node = checked_malloc(sizeof(struct  command_node));
-  node->next = NULL;
-  node->command = make_command(buffer,type);
-  return node;
+ return make_command(buffer,type);
 }
 
 command_stream_t
@@ -347,17 +380,18 @@ make_command_stream (int (*get_next_byte) (void *),
   get_byte = get_next_byte;
   get_byte_argument = get_next_byte_argument;
   command_stream_t stream = checked_malloc(sizeof(struct command_stream));
-  command_node_t node = checked_malloc(sizeof(struct command_node));
-  command_node_t temp_node = node;
-  command_node_t head = NULL;    
-  command_node_t tail = NULL;
+command_t temp_node = checked_malloc(sizeof(struct command)); 
+
+init_queue(stream);
+
+
   if(!feof(get_byte_argument))
   {
-    eat_whitespace();
+    eleminateEmptySpace();
     if((buffer[0] = get_byte(get_byte_argument)) == EOF)
     {
       free(stream);
-      free(node);
+      free(temp_node);
       return NULL;
     }
     ungetc(buffer[0], get_byte_argument);
@@ -366,26 +400,13 @@ make_command_stream (int (*get_next_byte) (void *),
 
     while(1)  
     {
-      if(type == SEQUENCE_COMMAND)
-        temp_node = make_node(buffer, SIMPLE_COMMAND);
-      else
-        temp_node = make_node(buffer, type);	
-      if(!head)
-      {
-      	head = temp_node;
-      }
-      else
-      {
-	      tail->next = temp_node;
-        temp_node->prev = tail;
-      }
-      tail = temp_node;
+      temp_node = make_Queuenode(buffer, type);	
+	    enqueue(stream,temp_node);
       if(type == SEQUENCE_COMMAND)
         break;
-      eat_whitespace();
+      eleminateEmptySpace();
       if((buffer[0] = get_byte(get_byte_argument)) == EOF)
       {
-        stream->commands = &head;
         return stream;
       }
       ungetc(buffer[0], get_byte_argument);
@@ -393,25 +414,17 @@ make_command_stream (int (*get_next_byte) (void *),
       type = scan(buffer);
     }
   }
-  stream->commands = &head;
   return stream;
 }
 
 command_t
 read_command_stream (command_stream_t s)
 {
-  if(s == NULL)
-    return NULL;
-  if(*(s->commands) != NULL)
+   if(!empty(s))  {
+   return dequeue(s);
+ }
+  else
   {
-    command_node_t stream = *(s->commands);
-    *(s->commands) = stream->next;
-    if(stream->prev != NULL)
-    {
-      free(stream->prev->command);
-      free(stream->prev);
-    }
-    return stream->command;
+    return NULL;
   }
-  return NULL;
 }
