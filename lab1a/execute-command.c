@@ -106,6 +106,7 @@ void execute_simple(command_t c)
   
     //execute the simple command
     execvp(c->u.word[0],c->u.word);
+    exit(0);
     //  error(1,0,"Invalid simple command");
   }
   else
@@ -237,32 +238,35 @@ void execute_generic(command_t c)
 void
 execute_timeTravel(command_stream_t command_stream)
 {
-  int i=0;
-  while(!empty(command_stream))
-  {
-  pid_t pid=fork();
-  if(pid == -1)
-  {
-    error(1,0,"can not fork");
-  }
-  else if(pid == 0)
-  {
-    //in child
-    command_t c= dequeue(command_stream);
-    execute_generic(c);
-    exit(0);
 
-  }
-  else if(pid > 0)
-  {
-    //in parent
-    dequeue(command_stream);
-    printf("i %d",i++);
-  }
-  printf("in while");
-  }
-  printf("end of while");
-  }
+  	while(!empty(command_stream))
+  	{
+  	pid_t pid=fork();
+  	command_t c = dequeue(command_stream);
+
+  	if(pid == -1)
+  	{
+  	  error(1,0,"can not fork");
+  	}
+  	else if(pid == 0)
+  	{
+  	  //in child
+  	  execute_generic(c);
+  	  exit(0);
+	
+  	}
+  	else if(pid > 0)
+  	{
+  	  //in parent
+  	  printf("pid %d\n",pid);
+    }
+	}
+  
+ //    printf("end of while");
+	//exit(0);
+	}
+  
+
 
 
 void
