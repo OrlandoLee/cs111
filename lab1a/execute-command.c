@@ -11,10 +11,59 @@
 #include <sys/stat.h>
 #include <fcntl.h>//O_RDONLY
 #include <stdlib.h>//exit()
+#include <unistd.h>//_exit()
 /* FIXME: You may need to add #include directives, macro definitions,
    static function definitions, etc.  */
 
 void execute_generic(command_t c);
+
+////////////////////////////
+#define QUEUESIZE       1000
+
+struct command_stream{
+          command_t q[QUEUESIZE+1];// body of queue 
+          int first ;                       //position of first element
+          int last ;                       // position of last element 
+          int count ;                      // number of queue elements 
+};
+void init_queue(command_stream_t q);
+/*{
+          q->first = 0;
+          q->last = QUEUESIZE-1;
+          q->count = 0;
+}*/
+void enqueue(command_stream_t q, command_t x);
+/*
+{
+          if (q->count >= QUEUESIZE)
+            printf("Warning: queue overflow enqueue \n");
+          else {
+            q->last = (q->last+1) % QUEUESIZE;
+            q->q[ q->last ] = x;    
+            q->count = q->count + 1;
+          }
+}
+*/
+command_t dequeue(command_stream_t q);
+/*
+{
+          command_t x;
+        if (q->count <= 0) printf("Warning: empty queue dequeue.\n");
+        else {
+          x = q->q[ q->first ];
+          q->first = (q->first+1) % QUEUESIZE;
+          q->count = q->count - 1;
+        }
+        return(x);
+}
+*/
+int empty(command_stream_t q);
+/*
+{
+          if (q->count <= 0) return (1);
+          else return (0);
+}*/
+////////////////////////////
 
 int
 command_status (command_t c)
@@ -57,7 +106,7 @@ void execute_simple(command_t c)
   
     //execute the simple command
     execvp(c->u.word[0],c->u.word);
-  //  error(1,0,"Invalid simple command");
+    //  error(1,0,"Invalid simple command");
   }
   else
     error(1,0,"Could not fork");
@@ -184,6 +233,38 @@ void execute_generic(command_t c)
   }
 
 }
+
+void
+execute_timeTravel(command_stream_t command_stream)
+{
+  int i=0;
+  while(!empty(command_stream))
+  {
+  pid_t pid=fork();
+  if(pid == -1)
+  {
+    error(1,0,"can not fork");
+  }
+  else if(pid == 0)
+  {
+    //in child
+    command_t c= dequeue(command_stream);
+    execute_generic(c);
+    exit(0);
+
+  }
+  else if(pid > 0)
+  {
+    //in parent
+    dequeue(command_stream);
+    printf("i %d",i++);
+  }
+  printf("in while");
+  }
+  printf("end of while");
+  }
+
+
 void
 execute_command (command_t c, bool time_travel)
 {

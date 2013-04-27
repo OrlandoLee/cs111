@@ -4,7 +4,7 @@
 #include <error.h>
 #include <getopt.h>
 #include <stdio.h>
-
+#include <unistd.h>
 #include "command.h"
 
 static char const *program_name;
@@ -53,6 +53,14 @@ main (int argc, char **argv)
 
   command_t last_command = NULL;
   command_t command;
+ 
+  if(time_travel)
+  { 
+    execute_timeTravel(command_stream);
+     return 0;
+  }
+  else
+  {
   while ((command = read_command_stream (command_stream)))
     {
       if (print_tree)
@@ -68,4 +76,5 @@ main (int argc, char **argv)
     }
 
   return print_tree || !last_command ? 0 : command_status (last_command);
-}
+  }
+ }
