@@ -1,0 +1,69 @@
+Name:
+UCLA ID:804126172
+
+Collaborators:
+
+-------------------------------------------------------------------------------
+
+Response to Exercise 1:
+Yes, result will be saved to stack, so even if we change run to schedule. the result will not change.
+
+Response to Exercise 2:
+
+static pid_t
+do_fork(process_t *parent)
+{
+	// First, find an empty process descriptor.  If there is no empty
+	//   process descriptor, return -1.  Remember not to use proc_array[0].
+  	  pid_t i;
+ 	   for (i = 1; i < NPROCS; i++) {
+		if(proc_array[i].p_state == P_EMPTY)
+        	    break;
+		}
+    if(i != NPROCS)
+    {
+  
+       proc_array[i].p_registers=current->p_registers; //copy registers, for struct we can just need to assign
+       copy_stack(&proc_array[i],current); //copy stacks
+       proc_array[i].p_registers.reg_eax = 0;// for return value in child process
+        proc_array[i].p_state = P_RUNNABLE; // change state to P_RUNNABLE
+         proc_array[i].p_pid = i; //change pid
+        // Finally, return the child's process ID to the parent.
+        return i;
+    }
+    
+	return -1;
+}
+
+static void
+copy_stack(process_t *dest, process_t *src)
+{
+	uint32_t src_stack_bottom, src_stack_top;
+	uint32_t dest_stack_bottom, dest_stack_top;
+
+	src_stack_top = PROC1_STACK_ADDR + src->p_pid*PROC_STACK_SIZE ;
+	src_stack_bottom = src->p_registers.reg_esp;
+	dest_stack_top = PROC1_STACK_ADDR + dest->p_pid*PROC_STACK_SIZE;
+	dest_stack_bottom = dest_stack_top - (src_stack_top - src_stack_bottom);
+        memcpy(dest,src,src_stack_top-src_stack_bottom);
+        dest->p_registers.reg_esp = dest_stack_bottom;
+	// YOUR CODE HERE: memcpy the stack and set dest->p_registers.reg_esp
+
+}
+
+
+Response to Exercise 3:
+I add a pid_t wait_pid in process descriptor to remember which process it is waiting for.
+In INT_SYS_WAIT I put this process to block queue by changing its p_state to P_BLOCKED.
+I wake this process up in INT_SYS_EXIT by checking who is waiting for the exit process and set it as P_RUNNABLE. 
+
+Response to Exercise 4:
+Just mark p_state = P_EMPTY when some other process call wait_pid() on it.
+
+Anything else you'd like us to know:
+
+
+
+
+Extra credit exercises:
+

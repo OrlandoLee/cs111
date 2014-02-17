@@ -1,0 +1,69 @@
+# Fill in your name, student ID, and email address in this file.
+# If you are working in a team, fill out the information for both team 
+# members.
+
+# SUBMIT THE LAB ONLY ONCE (from only one partner). This file will be
+# automatically parsed in order to give both team members credit for the
+# lab.
+
+# You need to fill in the EXERCISE sections describing your solutions
+# for Tasks 1, 2, and 3, as well as write the corresponding code.
+# If you did one or more extra credit problems, indicate which one in the
+# appropriate section below (remove the # sign first). If you have any other
+# information you'd like us to know, please add it at the end of the file.
+
+# Partner 1
+Name: Chang Zhao
+Student ID: 304138441
+Email: czhao@cs.ucla.edu
+
+# Partner 2 (if you're working in a team)
+Name: Zongsheng Li
+Student ID: 804126172
+Email: zongshengli@ucla.edu
+
+# EXERCISE 1: What method you used to make your peer download and upload
+#    files in parallel?  (~1-3 sentences)
+We used fork to enable the peer to download and upload files in parallel. We first accept/ send a request/command then fork a new process, if we are in child let the child process handle request/command, let the parent process continue sending/accepting command/request.
+
+# EXERCISE 2A: What conditions did you find and fix that would have
+#    triggered a buffer overrun bug?  (~1-3 sentences each)
+1. If the length of the filename a user uploaded is larger than the size of t->filename, it's gonna trigger buffer overflow. The place using strcpy and taking value from outside, strcpy does not specify the length so if the source string is longer than the destination array that can hold it it's going to overflow. So we fix it largest size as FILENAMESIZ.
+
+2. Also if the t->tail >= FILENAMESIZ,osp2p_snscanf  is going to overflow filename.
+
+# EXERCISE 2B: What other robustness problems did you fix?  (~1-3 sentences
+#    each)
+1. Outside the current directory attack. We do not allow "/" in the file name. After osp2p_snscanf, if we find '/' in file name, print error.
+
+
+# EXERCISE 3: Describe the attacks you implemented for "evil mode".  Why
+#    are they attacks?  (~3-10 sentences each)
+Implemented in task_evil_download()
+3A:
+Upload attack:
+1.upload a malicious file which contains virus.
+2.upload the file that the receiver requires unlimited times into the stream. And the user does not know if this is a valid file or not if the user does not stop it will eventually fill up that user's disk.
+
+
+Download attack:
+
+Get the list of peers which contain files specified from command line. Then attack each of them using 3B and 3C methods.
+
+3B:
+Buffer overflow attack. Put in a filename which used in GET that's very long which is 2 times the size of FILENAMESIZ and not null terminated. When the peer tries to put that string into t using strcpy this is going to overflow.
+Code: osp2p_writef(t->peer_fd, "GET %s%s OSP2P\n",t->filename, t->filename);
+If we carefully construct the filename we can take control of the peer's system.
+
+3C:
+ ../ attack
+Try to get higher level file using GET ../osppeer.c.
+
+3D:
+Half connection attack. We can issue a lot of half connection to fill up the peer's half connection table. This problem can only be solved using cookie.
+
+
+# Extra credit problems
+#Extra credit problem: none
+
+# Add any other information you'd like us to know below this line.

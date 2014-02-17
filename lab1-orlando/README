@@ -1,0 +1,6 @@
+。This is a skeleton for CS 111 Lab 1.
+
+Limitation: we can not process statements like:
+#this is comments
+
+a comment followed by a new line.
